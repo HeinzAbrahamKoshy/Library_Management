@@ -5,6 +5,7 @@ import time
 import datetime
 import mysql.connector as mysql
 from datetime import date,timedelta
+import admin_fn
 current_user=0
 current_admin=0
 # fine column added
@@ -93,11 +94,13 @@ def admin_auth():
                     input("Press ENTER")
                     time.sleep(2)
                     os.system('cls')
+                    admin_funtion()
                     break
         if(auth==False):
             print('Admin not found...')
             input('Please Try Again.(Press Enter)')
             os.system('cls')
+
 
 def user_book_functions(ch=None):
     global module_choice
@@ -165,7 +168,7 @@ def user_book_functions(ch=None):
                         break
             else:
                 found=True  
-        print(f"Number of books taken is {books_taken_now}",end="\n")
+       
         print("----Current User Status:----")
         print(f"Total number of books taken:{my_details['books_borrowed']}")
         print("")
@@ -234,7 +237,138 @@ def user_book_functions(ch=None):
                     
     elif(ch==5):
         main()
+def admin_funtion():
+    global admin_details
+    global user_details
+    global book_details
+    global borrow_details
+    global current_admin
 
+    print('---ADMINISTRATOR FUNCTIONS---')
+    print('1.Users Table')
+    print('2.Books Table')
+    print('3.Borrow Table')
+    print('4.Exit')
+    ch=int(input('Enter:'))
+    if (ch==1):
+        heading=user_details[0].keys()
+        print(' ** '.join(heading).upper())
+        for i in user_details:
+            print(' ** '.join(str(i[key]) for key in heading))
+        print('')
+        print('1.Delete User')
+        print('2.Return')
+        ch1_ch=int(input('Enter:'))
+        if(ch1_ch==1):
+            
+            user_flag=0
+            while(user_flag==0):
+                del_user_id=int(input('Enter user id to delete:'))
+                for i in user_details:
+                    if(del_user_id==i['user_id']):
+                        user_flag=1
+                        user_details.remove(i)
+                        input('Removed..(Press ENTER)')
+                        time.sleep(1)
+                        os.system('cls')
+                        admin_funtion()
+                if(user_flag==0):
+                    input('User not found.please try again(Press ENTER)') 
+                     
+        else:
+            input('Returning..(Press ENTER)')
+            time.sleep(1)
+            os.system('cls')
+            admin_funtion()
+
+        input('Press ENTER to return')
+        time.sleep(1)
+        os.system('cls')
+        admin_funtion()
+
+    elif(ch==2):
+        heading=book_details[0].keys()    
+        print(' ** '.join(heading).upper())
+        for i in book_details:
+            print(' ** '.join(str(i[key]) for key in heading))
+        print('')
+        print('1.Add Book')
+        print('2.Delete Book')
+        print('3.Return')
+        ch2_ch=int(input('Enter:'))
+        if(ch2_ch!=1 and ch2_ch!=2):
+            input('Returning..(Press ENTER)')
+            time.sleep(1)
+            os.system('cls')
+            admin_funtion()    
+            
+        else:
+            if(ch2_ch==1):
+                new_book_id=int(input("Enter new bookid:"))
+                new_id_flag=0
+                for i in book_details:
+                    if(i['book_id']==new_book_id):
+                        new_id_flag=1
+                        i['total_books']+=1
+                        i['available_books']+=1
+                        print('book added')
+                if(new_id_flag==0):
+                    b_name=input('Enter Book name:')
+                    book_details.append({'book_id': new_book_id, 'book_name': b_name, 'available_books':1,'total_books':1})        
+                    input('Book Added.(Press ENTER)')
+                    time.sleep(1)
+                    os.system('cls')
+                    admin_funtion()
+            elif(ch==2):
+                book_flag=0
+                while(book_flag==0):
+                    del_book_id=int(input('Enter book id to delete:'))
+                    for i in book_details:
+                        if(del_book_id==i['book_id']):
+                            book_flag=1
+                            book_details.remove(i)
+                            input('Removed..(Press ENTER)')
+                            time.sleep(1)
+                            os.system('cls')
+                            admin_funtion()
+                    if(book_flag==0):
+                        input('Book not found.please try again(Press ENTER)')
+
+
+        input('Press ENTER to return')
+        time.sleep(1)
+        os.system('cls')
+        admin_funtion()
+    elif(ch==3) :
+        heading=borrow_details[0].keys()
+        print(' ** '.join(heading).upper())
+        for i in borrow_details:
+            print(' ** '.join(str(i[key]) for key in i))
+        print('Returned Book id:')
+        L=[]
+        for i in borrow_details:
+            if(i['status']=='R'):
+                print(i['book_id'])
+                L.append(i['book_id'])
+        print('1.Delete Returned Books from Borrow table')
+        print('2.Return')
+        ch3_ch=int(input('ENTER:'))
+        print('')
+        if(ch3_ch==1):
+            for i in borrow_details:
+                if(i['book_id'] in L and i['status']=='R'):
+                    borrow_details.remove(i)
+            print("Removed Books.")
+
+        input('Press ENTER to return')
+        time.sleep(1)
+        os.system('cls')
+        admin_funtion()
+    else:
+        print('Exiting Admin Page..')
+        time.sleep(1)
+        os.system('cls')
+        main()
 
 
 def main():
