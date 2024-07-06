@@ -56,7 +56,22 @@ def user_auth():
         print('2.Login')
         user_choice=int(input("Enter:"))
         if(user_choice==1):
-            print("not ready")
+            print('')
+            success=False
+            max_id=0
+            while(success==False):
+                new_username=input('Enter new username:')
+                new_pass=input('Enter new pass:')
+                for i in user_details:
+                    if(i['user_name']==new_username):
+                        input("User exists(Press ENTER to try again.)")
+                        max_id=i['user_id']
+                        success=True
+            user_details.append({'user_id': max_id, 'user_name': new_username, 'pass': new_pass,'fine':0,'books_borrowed':0})        
+            input('Created User(Press ENTER to exit.)')
+            os.system('cls')
+
+            user_auth()
         elif(user_choice==2):    
             usr=input("Enter Username:")
 
@@ -76,6 +91,10 @@ def user_auth():
                 print('User not found...')
                 input('Please Try Again.(Press Enter)')
                 os.system('cls')
+        else:
+            input('Please press correct input(Press ENTER to try again)')        
+            os.system('cls')
+            user_auth()
 
 def admin_auth():
     global admin
@@ -139,12 +158,13 @@ def user_book_functions(ch=None):
         found=False
         books_taken_now=0
         while(found==False):
-            borrow_ch=input('Do you wish to borrow books(y/n):').lower()
+            borrow_ch=input('Do you wish to borrow books(y/n):').lower()     ## MAXIMUM THREE BOOKS
             if(borrow_ch=='y'):
+                max_books=3
                 count_borrow=3-my_details['books_borrowed']
-                print(f"You can borrow {count_borrow} books.")
+                print(f"You can borrow {count_borrow} more books.")
 
-                while(books_taken_now<=count_borrow):
+                while(my_details['books_borrowed']<=max_books):
                     exit_selection=input('Enter Book id(press X to Exit):').lower() ### BOOK ID ENTERED HERE
                     if(exit_selection=='x'):
                         found=True
@@ -157,27 +177,35 @@ def user_book_functions(ch=None):
                             print("Book Borrowed.")
                             # update user_details table
                             my_details['books_borrowed']+=1
-                            count_borrow-=1
+                            
                             # update borrow book table
                             borrow_details.append({'book_id':borrow_book_id,'user_id':current_user,'borrow_date':date.today(),'due_date':date.today()+timedelta(days=10),'return_date':None,'fine':0,'status':'B'})
                             for j in book_details:
                                 if(j['book_id']==borrow_book_id):
                                     j['available_books']-=1
                     if(found==False):
-                        print("Book not Found . Please Try again.")
-                        break
+                        input("Book not Found . Please Try again.(Press ENTER)")
+                if(my_details['books_borrowed']==max_books):
+                    print(f"You have borrowed maximum number of books:{max_books}")
+                    print('Return books to borrow.')
+                    found=True
+                        
+                        
             else:
-                found=True  
-       
+                found=True 
+                input('Press ENTER to return.') 
+                os.system('cls')
+                user_book_functions()
+        print('')
         print("----Current User Status:----")
         print(f"Total number of books taken:{my_details['books_borrowed']}")
         print("")
+
         user_status_headings=borrow_details[0].keys()
         print(' ** '.join(user_status_headings).upper())
-
         for i in range(my_details['books_borrowed']):
             for j in borrow_details:
-                if(j['user_id']==current_user):
+                if(j['user_id']==current_user and j['status']=='B'):
                     print(" ** ".join(str(j[key]) for key in j))
         print('')
         input("Press Enter to return.")            
@@ -187,15 +215,24 @@ def user_book_functions(ch=None):
 
         user_book_functions()        
     elif(ch==3):
+        user_borrow=False
+        for i in borrow_details:
+            if(i['user_name']==current_user and i['status']=='B'):
+                user_borrow=True
+        if(user_borrow==False):
+                input("No books to return(Press ENTER to return)")   
+                os.system('cls')
+                user_book_functions()
         print("---- Books with User:----")
         print(f"Number of books taken:{my_details['books_borrowed']}")
         print("")
         user_status_headings=borrow_details[0].keys()
         print(' ** '.join(user_status_headings).upper())
 
+
         for i in range(my_details['books_borrowed']):
             for j in borrow_details:
-                if(j['user_id']==current_user):
+                if(j['user_id']==current_user and j['status']=='B'):
                     print(" ** ".join(str(j[key]) for key in j))
         print('')
         found_=False
@@ -205,6 +242,7 @@ def user_book_functions(ch=None):
             for j in borrow_details:
                 if(j['user_id']==current_user and j['book_id']==return_book_id):
                     found_=True
+                    user_borrow=True
                     due=j['due_date']
                     #update user_details table
                     my_details['books_borrowed']-=1
@@ -214,7 +252,12 @@ def user_book_functions(ch=None):
                     for j1 in book_details:
                         if(j1['book_id']==return_book_id):
                             j1['available_books']+=1
-            if(found_==False):
+            if(user_borrow==False):
+                input("No books to return(Press ENTER to return)")   
+                os.system('cls')
+                user_book_functions()             
+
+            elif(found_==False):
                 input("Book is not Found.Please try again.(Press ENTER)")        
 
         print(f"Book {return_book_id} is returned.")
@@ -234,9 +277,34 @@ def user_book_functions(ch=None):
         os.system('cls')
         user_book_functions()
 
-                    
+    elif(ch==4):
+        print('')
+        print("----Current User Status:----")
+        print(f"Total number of books taken:{my_details['books_borrowed']}")
+        print("")
+        user_borrow=False
+        for i in borrow_details:
+            if(i['user_name']==current_user and i['status']=='B'):
+                user_borrow=True
+        if(user_borrow==False):
+                input("No books in hand.(Press ENTER to return)")   
+                os.system('cls')
+                user_book_functions()
+        user_status_headings=borrow_details[0].keys()
+        print(' ** '.join(user_status_headings).upper())
+
+        for i in range(my_details['books_borrowed']):
+            for j in borrow_details:
+                if(j['user_id']==current_user):
+                    print(" ** ".join(str(j[key]) for key in j))
+        print('')
+        input("Press Enter to return.")                 
     elif(ch==5):
         main()
+    else:
+        input('Please ENTER correct input(Press ENTER to continue)')    
+        os.system('cls')
+        user_book_functions()
 def admin_funtion():
     global admin_details
     global user_details
@@ -340,6 +408,10 @@ def admin_funtion():
         os.system('cls')
         admin_funtion()
     elif(ch==3) :
+        if(borrow_details==[]):
+            input("Nothing to to display.(press ENTER to return)")
+            os.system('cls')
+            admin_funtion()
         heading=borrow_details[0].keys()
         print(' ** '.join(heading).upper())
         for i in borrow_details:
@@ -350,13 +422,14 @@ def admin_funtion():
             if(i['status']=='R'):
                 print(i['book_id'])
                 L.append(i['book_id'])
+        
         print('1.Delete Returned Books from Borrow table')
         print('2.Return')
         ch3_ch=int(input('ENTER:'))
         print('')
         if(ch3_ch==1):
             for i in borrow_details:
-                if(i['book_id'] in L and i['status']=='R'):
+                if(i['book_id'] in L and i['status']=='R' and i['fine']==0):
                     borrow_details.remove(i)
             print("Removed Books.")
 
@@ -387,5 +460,9 @@ def main():
         user_auth()
     elif(module_choice==3):
         exit()    
+    else:
+        input("Please enter correct input(Press Enter)")
+        os.system('cls')
+        main()
 
 main()        
