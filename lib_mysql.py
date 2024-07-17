@@ -1,15 +1,14 @@
 
 ##
 import os
-import sys
+
 import time
 import datetime
 import mysql.connector as mysql
 from datetime import date,timedelta
-import lib_mysql
+
 current_user=0
 current_admin=0
-
 con=mysql.connect(host='localhost', user='root',password='root',database='library')
 
 print(con)
@@ -17,9 +16,11 @@ db='library'
 
 c=con.cursor()
 
+
 auth=False
 def user_auth():
     global auth
+    auth=False
     global current_user
     while auth is False:
         print("----User Authentication:----",end="\n")
@@ -85,6 +86,7 @@ def admin_auth():
     global admin
     global current_admin
     global auth
+    auth=False
     while(auth is False):
         print("----Admin Authentication:----",end="\n")   
         id=int(input("Enter Adminstrator ID:"))
@@ -124,7 +126,7 @@ def user_book_functions():
     my_details=None
     c.execute('SELECT * FROM user_details WHERE user_name=%s',(current_user,))
     my_details=c.fetchone()
-    
+    ch=0
    # print("Hello {'USER '+current_user if module_choice==2 else 'ADMIN NO:'+current_admin} to the Library.")
     print("---USER LIBRARY---")
     print("1.View All Books")
@@ -177,23 +179,28 @@ def user_book_functions():
                         found=True
                         break
                     borrow_book_id=int(exit_selection)
+                    c.execute("SELECT * FROM borrow_details WHERE book_id=%s and status='B' and user_id=%s",(borrow_book_id,current_user))
+                    r=c.fetchall()
+                    if not r:
 
-                    c.execute('SELECT * FROM book_details WHERE available_books>0 and book_id=%s',(borrow_book_id,))
-                    cur_book=c.fetchone()
-                    if(cur_book):
-                        books_taken_now+=1
-                        found=True
-                        count_borrow-=1
-                        print("Book Borrowed.")
-                        today_date=date.today()
-                        due_date=date.today()+timedelta(days=10)
+                        c.execute('SELECT * FROM book_details WHERE available_books>0 and book_id=%s',(borrow_book_id,))
+                        cur_book=c.fetchone()
+                        if(cur_book):
+                            books_taken_now+=1
+                            found=True
+                            count_borrow-=1
+                            print("Book Borrowed.")
+                            today_date=date.today()
+                            due_date=date.today()+timedelta(days=10)
 
-                        c.execute("INSERT INTO borrow_details(book_id,user_id,borrow_date,due_date,status) VALUES(%s,%s,%s,%s,'B')",(borrow_book_id,current_user,today_date,due_date))
-                        c.execute('UPDATE book_details SET available_books=available_books-1 WHERE book_id=%s',(borrow_book_id,))
-                        c.execute('UPDATE user_details SET books_borrowed=books_borrowed+1 WHERE user_id=%s',(current_user,))
-                        con.commit()
+                            c.execute("INSERT INTO borrow_details(book_id,user_id,borrow_date,due_date,status) VALUES(%s,%s,%s,%s,'B')",(borrow_book_id,current_user,today_date,due_date))
+                            c.execute('UPDATE book_details SET available_books=available_books-1 WHERE book_id=%s',(borrow_book_id,))
+                            c.execute('UPDATE user_details SET books_borrowed=books_borrowed+1 WHERE user_id=%s',(current_user,))
+                            con.commit()
+                        else:
+                            input("Book not Found . Please Try again.(Press ENTER)")
                     else:
-                        input("Book not Found . Please Try again.(Press ENTER)")
+                        print('Book has already been borrowed.')
 
                     
                 if(count_borrow==0):
@@ -231,6 +238,9 @@ def user_book_functions():
         user_borrow=False
         c.execute('SELECT * FROM borrow_details WHERE user_id=%s and status="B"',(current_user,))
         result=c.fetchall()
+        found_=False
+        due=None
+        return_book_id=None
         if(result):
             user_borrow=True
             print("---- Books with User:----")
@@ -247,21 +257,22 @@ def user_book_functions():
                     print(" ** ".join(str(key) for key in j))
             print('')
 
-            found_=False
-            due=None
-            return_book_id=None
-            while(found_==False and book_count<3):
+            
+            while(found_==False and book_count<=3):
                 return_book_id=int(input("Which Book would you like to return:(Book id)"))
                 c.execute("SELECT * FROM borrow_details WHERE user_id=%s AND book_id=%s and status='B'",(current_user,return_book_id))
                 result=c.fetchall()
                 if(result):
                     found_=True
                     user_borrow=True
-                    c.execute('SELECT due_date FROM borrow_details WHERE user_id=%s and book_id=%s',(current_user,return_book_id))
+                    c.execute("SELECT due_date FROM borrow_details WHERE user_id=%s and book_id=%s and status='B'",(current_user,return_book_id))
                     r=c.fetchone()
                     due=r[0]
                     c.execute('UPDATE user_details SET books_borrowed=books_borrowed-1 WHERE user_id=%s',(current_user,))
-                    c.execute('UPDATE borrow_details SET status="R" and return_date =%s WHERE user_id=%s and book_id=%s',(datetime.date.today(),current_user,return_book_id))
+                    con.commit()
+                    today_date=datetime.date.today()
+                    c.execute("UPDATE borrow_details SET status='R',return_date =%s WHERE user_id=%s and book_id=%s",(today_date,current_user,return_book_id))
+                    con.commit()
                     c.execute('UPDATE book_details SET available_books=available_books+1 WHERE book_id=%s',(return_book_id,))
                     con.commit()
                 else:
@@ -362,6 +373,7 @@ def admin_funtion():
                     del_user_id=r[0]
                     c.execute('DELETE FROM user_details WHERE user_id=%s',(del_user_id,))
                     #c.execute('DELETE FROM borrow_details WHERE user_id=%s,(del_user_id)')
+                    con.commit()
                     input('Removed..(Press ENTER)')
                     time.sleep(1)
                     os.system('cls')
@@ -413,11 +425,12 @@ def admin_funtion():
                     r=c.fetchone()
                     if(r):
                         new_id_flag=1
-                        c.execute('UPDATE book_details SET total_books=total_books+1 and available_books=available_books+1 WHERE book_id=%s',(new_book_id,))
-                        print('BOOK ADDED..')
+                        c.execute('UPDATE book_details SET total_books=total_books+1,available_books=available_books+1 WHERE book_id=%s',(new_book_id,))
                         con.commit()
+                        print(f'BOOK Exists.Available books for bookid {new_book_id} has been incremented..')
+                        input('(Press ENTER)')
                         os.system('cls')
-                        admin_funtion
+                        admin_funtion()
                     else:
                         b_name=input('Enter Book name:')
                         c.execute('INSERT INTO book_details(book_name) VALUES (%s)',(b_name,))
@@ -493,7 +506,10 @@ def admin_funtion():
 
 
 def main():
-    
+    global current_user,current_admin
+    current_user=0
+    current_admin=0
+    module_choice=0
     print("~~~ Welcome to Library Management System ~~~")            
     print('1.Admin Authentication')
     print('2.User Authentication')
