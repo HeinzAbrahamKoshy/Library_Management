@@ -261,7 +261,7 @@ def user_book_functions():
                     r=c.fetchone()
                     due=r[0]
                     c.execute('UPDATE user_details SET books_borrowed=books_borrowed-1 WHERE user_id=%s',(current_user,))
-                    c.execute('UPDATE borrow_details SET status="R" WHERE user_id=%s and book_id=%s',(current_user,return_book_id))
+                    c.execute('UPDATE borrow_details SET status="R" and return_date =%s WHERE user_id=%s and book_id=%s',(datetime.date.today(),current_user,return_book_id))
                     c.execute('UPDATE book_details SET available_books=available_books+1 WHERE book_id=%s',(return_book_id,))
                     con.commit()
                 else:
@@ -361,7 +361,7 @@ def admin_funtion():
                 if(r):
                     del_user_id=r[0]
                     c.execute('DELETE FROM user_details WHERE user_id=%s',(del_user_id,))
-                    con.commit()
+                    #c.execute('DELETE FROM borrow_details WHERE user_id=%s,(del_user_id)')
                     input('Removed..(Press ENTER)')
                     time.sleep(1)
                     os.system('cls')
